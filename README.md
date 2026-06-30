@@ -8,51 +8,43 @@ A tiny macOS menu-bar app that keeps your Mac awake — with a coffee cup that *
 
 ## What it does
 
+The cup **steams whenever your Mac is being kept awake** — by *anything* using
+`caffeinate` (this app, the built-in tool, another app, a background agent). It mirrors
+the real, live state, not just its own switch.
+
 | State | Icon | Mac behavior |
 |-------|------|--------------|
-| OFF | ☕ (still cup) | normal sleep/screensaver |
-| ON  | ☕💨 (steaming, animated) | no display sleep, no idle sleep, no disk sleep, no system sleep |
+| 💤 idle  | ☕ (still cup)            | normal sleep / screensaver |
+| ☕ awake | ☕💨 (steaming, animated) | display / idle / disk / system sleep all blocked |
 
-Click the icon → toggle. That's it.
+Click the cup to toggle:
+- **caffeinated → globally OFF** — stops *every* `caffeinate`, whoever started it
+- **not caffeinated → ON** — starts one
 
-Under the hood it runs macOS's built-in `caffeinate -d -i -m -s`. No background daemons, no system extensions, no permissions required.
+Under the hood: macOS's built-in `caffeinate -d -i -m -s`. No daemons, no system
+extensions, no permissions.
 
 ---
 
-## Setup
+## Install (starts now + at login)
 
 ```bash
 git clone https://github.com/eyhshen/caffeine-menubar
 cd caffeine-menubar
+./install.sh
+```
 
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+Sets up a venv, renders the icons, and registers a **LaunchAgent** so the ☕ runs in
+your menu bar and relaunches at login. Remove anytime with `./uninstall.sh`.
 
-# icons are already included, but you can regenerate them:
-# .venv/bin/python make_icons.py
+> **Why a LaunchAgent, not a double-click `.app`?** A bare-script `.app` often doesn't
+> register as a GUI app on modern macOS, so its menu-bar icon never appears ("nothing
+> happens"). The LaunchAgent launches it properly into your login session.
 
+### Run once, no install
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python app.py
-```
-
-A coffee cup appears in your menu bar. Click it.
-
----
-
-## Start at login (optional)
-
-**Option A — Login Item (easiest):**
-System Settings → General → Login Items → + → add `app.py`
-(This won't work reliably; see Option B for a real solution.)
-
-**Option B — build a `.app` with py2app:**
-```bash
-.venv/bin/pip install py2app
-# setup.py coming soon
-```
-
-**Option C — LaunchAgent** (runs headlessly, most reliable):
-```bash
-# example plist coming soon
 ```
 
 ---
@@ -63,6 +55,8 @@ System Settings → General → Login Items → + → add `app.py`
 app.py          menu-bar app (rumps + subprocess caffeinate)
 make_icons.py   draws the cup + 4 steam frames using Pillow
 icons/          pre-rendered template PNGs (auto-tints for light/dark menu bar)
+install.sh      venv + icons + LaunchAgent (start now & at login)
+uninstall.sh    stop + remove the LaunchAgent
 requirements.txt
 ```
 

@@ -1,14 +1,15 @@
-"""Caffeine — a tiny macOS menu-bar app that shows (and controls) keep-awake.
+"""Caffeine — a tiny macOS menu-bar app that shows AND globally controls keep-awake.
 
-The coffee cup **steams whenever your Mac is actually being kept awake** — not just
-when *this* app turned it on. It checks for a live `caffeinate` process (this app's
-toggle, the built-in tool, or anything else using caffeinate), so the steam mirrors
-the true keep-awake state; when nothing is caffeinating, the cup sits still.
+The coffee cup **steams whenever your Mac is actually being kept awake** — by ANY
+`caffeinate` process (this app, the built-in tool, another app, even a background
+agent). It mirrors the true, live state; when nothing is caffeinating, the cup is still.
 
-Click the cup to toggle THIS app's own keep-awake on/off (it runs the system
-`caffeinate`). Either way the steam mirrors the true, live state.
+Click the cup to toggle:
+  • If the Mac is currently caffeinated (by anything) → **globally turns it OFF**
+    (kills every `caffeinate` process).
+  • If it's not → turns it ON (starts a `caffeinate`).
 
-Run:  python3 app.py     (see README for the double-clickable .app)
+Run:  python3 app.py
 """
 from __future__ import annotations
 
@@ -43,47 +44,52 @@ def system_caffeinated() -> bool:
         return False
 
 
+def kill_all_caffeinate() -> None:
+    """Global OFF: terminate every caffeinate process (ours, the agent's, anything)."""
+    try:
+        subprocess.run(["pkill", "-x", "caffeinate"], capture_output=True, timeout=3)
+    except Exception:
+        pass
+
+
 class CaffeineApp(rumps.App):
     def __init__(self) -> None:
         super().__init__("Caffeine", icon=ICON_OFF, template=True, quit_button="退出")
-        self.proc: subprocess.Popen | None = None  # our own caffeinate (the toggle)
+        self.proc: subprocess.Popen | None = None  # our own caffeinate (for atexit cleanup)
         self.caffeinated = False                    # real system state (any source)
         self.frame = 0
         self.status_item = rumps.MenuItem("", callback=None)
-        self.toggle_item = rumps.MenuItem("开启 Caffeination（本应用）", callback=self.toggle)
+        self.toggle_item = rumps.MenuItem("开启 Caffeination", callback=self.toggle)
         self.menu = [self.status_item, self.toggle_item, None]
         self.poll_timer = rumps.Timer(self.poll, POLL_INTERVAL)
         self.poll_timer.start()
         self.anim_timer = rumps.Timer(self.animate, ANIM_INTERVAL)
         self.anim_timer.start()
         self.poll(None)  # set initial state immediately
-        atexit.register(self._kill)
+        atexit.register(self._cleanup)
 
-    @property
-    def mine_on(self) -> bool:
-        return self.proc is not None and self.proc.poll() is None
-
-    def _kill(self) -> None:
+    def _cleanup(self) -> None:
+        # On quit, only stop OUR own caffeinate (don't globally kill others).
         if self.proc and self.proc.poll() is None:
             self.proc.terminate()
         self.proc = None
 
     def toggle(self, _sender) -> None:
-        if self.mine_on:
-            self._kill()
-            self.toggle_item.title = "开启 Caffeination（本应用）"
+        if system_caffeinated():
+            kill_all_caffeinate()   # global OFF
+            self.proc = None
         else:
-            self.proc = subprocess.Popen(CAFFEINATE_CMD)
-            self.toggle_item.title = "关闭 Caffeination（本应用）"
+            self.proc = subprocess.Popen(CAFFEINATE_CMD)  # ON
         self.poll(None)  # reflect immediately
 
     def poll(self, _timer) -> None:
         self.caffeinated = system_caffeinated()
         if self.caffeinated:
-            who = "本应用 + 系统" if self.mine_on else "其它来源"
-            self.status_item.title = f"☕ 电脑保持清醒中（{who}）"
+            self.status_item.title = "☕ 电脑保持清醒中"
+            self.toggle_item.title = "全局关闭 Caffeination"
         else:
             self.status_item.title = "💤 电脑可正常休眠"
+            self.toggle_item.title = "开启 Caffeination"
 
     def animate(self, _timer) -> None:
         if self.caffeinated:
