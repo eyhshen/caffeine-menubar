@@ -14,6 +14,12 @@ import atexit
 import subprocess
 from pathlib import Path
 
+
+def _system_caffeinated() -> bool:
+    """Return True if any caffeinate process is running on this Mac."""
+    result = subprocess.run(["pgrep", "-x", "caffeinate"], capture_output=True)
+    return result.returncode == 0
+
 import rumps
 
 ICONS = Path(__file__).resolve().parent / "icons"
@@ -61,7 +67,8 @@ class CaffeineApp(rumps.App):
         self._stop() if self.on else self._start()
 
     def animate(self, _timer) -> None:
-        if self.on:
+        # Drive icon from real system state, not just our own subprocess.
+        if _system_caffeinated():
             self.frame = (self.frame + 1) % len(ICON_ON)
             self.icon = ICON_ON[self.frame]
         else:
