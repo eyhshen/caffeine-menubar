@@ -1,0 +1,2 @@
+rumps>=0.4      # menu-bar app framework
+pillow>=10      # only used by make_icons.py to generate the cup/steam icons
