@@ -38,6 +38,7 @@ cat > "$PLIST" <<PL
   <key>WorkingDirectory</key><string>$DIR</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><false/>
+  <key>ProcessType</key><string>UIElement</string>
   <key>StandardOutPath</key><string>$HOME/Library/Logs/caffeine-menubar.log</string>
   <key>StandardErrorPath</key><string>$HOME/Library/Logs/caffeine-menubar.log</string>
 </dict>

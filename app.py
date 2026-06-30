@@ -55,6 +55,12 @@ def kill_all_caffeinate() -> None:
 class CaffeineApp(rumps.App):
     def __init__(self) -> None:
         super().__init__("Caffeine", icon=ICON_OFF, template=True, quit_button="退出")
+        # Run as a pure menu-bar accessory — no Dock icon, no app-switcher entry.
+        try:
+            from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
+            NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+        except Exception:
+            pass
         self.proc: subprocess.Popen | None = None  # our own caffeinate (for atexit cleanup)
         self.caffeinated = False                    # real system state (any source)
         self.frame = 0
@@ -100,4 +106,12 @@ class CaffeineApp(rumps.App):
 
 
 if __name__ == "__main__":
+    # Belt-and-suspenders: suppress Dock icon before the run loop starts.
+    # The LaunchAgent plist also sets ProcessType=UIElement, but this ensures
+    # the policy is right even when the script is run directly.
+    try:
+        from AppKit import NSApp, NSApplicationActivationPolicyAccessory  # type: ignore[import]
+        NSApp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+    except Exception:
+        pass
     CaffeineApp().run()
